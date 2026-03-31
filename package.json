@@ -15,9 +15,11 @@
     "express-validator": "^7.3.1",
     "http-errors": "~1.6.3",
     "jsonwebtoken": "^9.0.3",
+    "mon": "^0.0.8",
     "mongoose": "^9.2.4",
     "morgan": "~1.9.1",
     "multer": "^2.1.1",
+    "node": "^25.8.2",
     "nodemailer": "^8.0.2",
     "nodemon": "^3.1.14",
     "slugify": "^1.6.6"

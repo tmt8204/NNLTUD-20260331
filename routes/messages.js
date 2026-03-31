@@ -19,66 +19,35 @@ let storage = multer.diskStorage({
 let upload = multer({ storage })
 
 // GET / - lấy tin nhắn cuối cùng của mỗi cuộc trò chuyện mà user hiện tại tham gia
-router.get('/', CheckLogin, async (req, res) => {
-    try {
-        let currentUserId = req.user._id
-
-        let result = await messageSchema.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { from: new mongoose.Types.ObjectId(currentUserId) },
-                        { to: new mongoose.Types.ObjectId(currentUserId) }
-                    ]
-                }
-            },
-            { $sort: { createdAt: -1 } },
-            {
-                $addFields: {
-                    conversationKey: {
-                        $cond: {
-                            if: { $gt: [{ $toString: '$from' }, { $toString: '$to' }] },
-                            then: { $concat: [{ $toString: '$to' }, '_', { $toString: '$from' }] },
-                            else: { $concat: [{ $toString: '$from' }, '_', { $toString: '$to' }] }
-                        }
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: '$conversationKey',
-                    lastMessage: { $first: '$$ROOT' }
-                }
-            },
-            { $replaceRoot: { newRoot: '$lastMessage' } },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: 'from',
-                    foreignField: '_id',
-                    as: 'from',
-                    pipeline: [{ $project: { username: 1, fullName: 1, avatarUrl: 1 } }]
-                }
-            },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: 'to',
-                    foreignField: '_id',
-                    as: 'to',
-                    pipeline: [{ $project: { username: 1, fullName: 1, avatarUrl: 1 } }]
-                }
-            },
-            { $unwind: '$from' },
-            { $unwind: '$to' },
-            { $sort: { createdAt: -1 } }
-        ])
-
-        res.send(result)
-    } catch (error) {
-        res.status(500).send({ message: error.message })
+router.get('/', CheckLogin, async function (req, res, next) {
+    let user1 = req.user._id;
+    let messages = await messageSchema.find({
+        $or: [{
+            from: user1
+        }, {
+            to: user1
+        }]
+    }).sort({
+        createdAt: -1
+    })
+    let messageMap = new Map();
+    user1 = user1.toString();
+    for (const message of messages) {
+        let keyUser = user1 == message.from.toString() ? message.to.toString() : message.from.toString();
+        if (!messageMap.has(keyUser)) {
+            messageMap.set(keyUser, message)
+        }
     }
+    let result = [];
+    messageMap.forEach(function (value, key) {
+        result.push({
+            user: key,
+            message: value
+        })
+    })
+    res.send(result)
 })
+
 
 // GET /:userID - lấy toàn bộ tin nhắn giữa user hiện tại và userID
 router.get('/:userID', CheckLogin, async (req, res) => {
